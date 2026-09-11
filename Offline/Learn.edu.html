@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>stark. - Game Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        :root {
+            --bg-dark: #0a0e27;
+            --bg-secondary: #12172e;
+            --bg-tertiary: #1a1f3a;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-primary: #e8eaed;
+            --text-secondary: #a8adb5;
+            --accent: #6366f1;
+            --accent-light: #818cf8;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Fluid Background */
+        #fluidCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 280px;
+            background: rgba(12, 16, 35, 0.95);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border-color);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease, width 0.3s ease;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .sidebar-header {
+            padding: 24px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .sidebar-logo {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            white-space: nowrap;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .sidebar.collapsed .sidebar-logo {
+            font-size: 20px;
+            letter-spacing: 0;
+        }
+
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+            padding: 4px;
+            transition: color 0.2s;
+        }
+
+        .toggle-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+            border: 1px solid transparent;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .nav-item:hover {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--text-primary);
+            border-color: rgba(99, 102, 241, 0.2);
+        }
+
+        .nav-item.active {
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .nav-icon {
+            font-size: 18px;
+            min-width: 24px;
+            text-align: center;
+        }
+
+        .sidebar.collapsed .nav-item {
+            padding: 12px;
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .nav-item span:not(.nav-icon) {
+            display: none;
+        }
+
+        .sidebar-footer {
+            padding: 16px 8px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .settings-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .settings-btn:hover {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--text-primary);
+            border-color: var(--accent);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            width: calc(100% - 280px);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            z-index: 50;
+            transition: margin-left 0.3s ease, width 0.3s ease;
+            position: relative;
+        }
+
+        .sidebar.collapsed ~ .main-content {
+            margin-left: 80px;
+            width: calc(100% - 80px);
+        }
+
+        /* Header */
+        .header {
+            height: 70px;
+            background: rgba(18, 23, 46, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .search-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+            width: 250px;
+            transition: all 0.2s;
+        }
+
+        .search-box::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-box:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent);
+        }
+
+        /* Content Area */
+        .content-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 30px;
+            position: relative;
+        }
+
+        .content-wrapper::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .content-wrapper::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .content-wrapper::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .view {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Games Grid */
+        .games-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .games-title {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .filter-tab {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .filter-tab:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        .filter-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+        }
+
+        .game-card {
+            background: rgba(26, 31, 58, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            aspect-ratio: 1.2;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .game-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--accent);
+            background: rgba(26, 31, 58, 0.8);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);
+        }
+
+        .game-thumbnail {
+            flex: 1;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(129, 140, 248, 0.05) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            overflow: hidden;
+        }
+
+        .game-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .game-info {
+            padding: 12px;
+            background: rgba(12, 16, 35, 0.8);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .game-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .game-badge {
+            font-size: 10px;
+            color: var(--accent);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .setting-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .toggle-switch {
+            width: 48px;
+            height: 24px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .toggle-switch.on {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: left 0.2s;
+        }
+
+        .toggle-switch.on::after {
+            left: 26px;
+        }
+
+        /* Discord Embed */
+        .discord-container {
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .discord-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: var(--bg-secondary);
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .loader {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(99, 102, 241, 0.2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 240px;
+            }
+
+            .sidebar.collapsed {
+                width: 70px;
+            }
+
+            .main-content {
+                margin-left: 240px;
+                width: calc(100% - 240px);
+            }
+
+            .sidebar.collapsed ~ .main-content {
+                margin-left: 70px;
+                width: calc(100% - 70px);
+            }
+
+            .header {
+                padding: 0 20px;
+            }
+
+            .search-box {
+                width: 150px;
+            }
+
+            .games-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+
+            .content-wrapper {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="fluidCanvas"></canvas>
+    
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">stark.</div>
+                <button class="toggle-btn" id="toggleSidebar">⋮</button>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-view="home">
+                    <span class="nav-icon">🏠</span>
+                    <span>Home</span>
+                </div>
+                <div class="nav-item" data-view="games">
+                    <span class="nav-icon">🎮</span>
+                    <span>Games</span>
+                </div>
+                <div class="nav-item" data-view="apps">
+                    <span class="nav-icon">💻</span>
+                    <span>Apps</span>
+                </div>
+                <div class="nav-item" data-view="movies">
+                    <span class="nav-icon">🎬</span>
+                    <span>Movies</span>
+                </div>
+                <div class="nav-item" data-view="discord">
+                    <span class="nav-icon">💬</span>
+                    <span>Discord</span>
+                </div>
+                <div class="nav-item" data-view="more">
+                    <span class="nav-icon">✨</span>
+                    <span>More</span>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="settings-btn" id="openSettings">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Settings</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <div class="header-title">stark. Game Hub</div>
+                <div class="header-actions">
+                    <input type="text" class="search-box" id="searchBox" placeholder="Search games...">
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-wrapper">
+                <!-- Home View -->
+                <div class="view active" id="view-home">
+                    <div style="text-align: center; padding: 80px 40px;">
+                        <h1 style="font-size: 48px; font-weight: 700; margin-bottom: 12px;">Welcome to stark.</h1>
+                        <p style="font-size: 16px; color: var(--text-secondary); margin-bottom: 40px;">Your ultimate game & entertainment hub</p>
+                        <button class="filter-tab active" onclick="switchView('games')" style="padding: 12px 32px; font-size: 16px;">Explore Games</button>
+                    </div>
+                </div>
+
+                <!-- Games View -->
+                <div class="view" id="view-games">
+                    <div class="games-header">
+                        <div class="games-title">🎮 Game Library</div>
+                        <div class="filter-tabs">
+                            <button class="filter-tab active" onclick="filterGames('all')">All</button>
+                            <button class="filter-tab" onclick="filterGames('action')">Action</button>
+                            <button class="filter-tab" onclick="filterGames('puzzle')">Puzzle</button>
+                            <button class="filter-tab" onclick="filterGames('sports')">Sports</button>
+                        </div>
+                    </div>
+                    <div class="games-grid" id="gamesGrid"></div>
+                </div>
+
+                <!-- Apps View -->
+                <div class="view" id="view-apps">
+                    <div class="games-header">
+                        <div class="games-title">💻 Web Apps</div>
+                    </div>
+                    <p style="color: var(--text-secondary); text-align: center; padding: 60px 20px;">Coming soon...</p>
+                </div>
+
+                <!-- Movies View -->
+                <div class="view" id="view-movies">
+                    <div class="games-header">
+                        <div class="games-title">🎬 Movies & TV</div>
+                    </div>
+                    <p style="color: var(--text-secondary); text-align: center; padding: 60px 20px;">Coming soon...</p>
+                </div>
+
+                <!-- Discord View -->
+                <div class="view" id="view-discord">
+                    <div class="games-header">
+                        <div class="games-title">💬 Discord Community</div>
+                    </div>
+                    <div class="discord-container">
+                        <iframe class="discord-iframe" src="https://cdn.staticdelivr.com/gh/2pro12342/Chatcord/refs/heads/main/chatcord.html" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture;"></iframe>
+                    </div>
+                </div>
+
+                <!-- More View -->
+                <div class="view" id="view-more">
+                    <div class="games-header">
+                        <div class="games-title">✨ More Features</div>
+                    </div>
+                    <p style="color: var(--text-secondary); text-align: center; padding: 60px 20px;">Additional features coming soon...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">⚙️ Settings</div>
+                <button class="modal-close" onclick="closeSettings()">×</button>
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-label">
+                    <span class="setting-name">Dark Mode</span>
+                    <div class="toggle-switch on" id="darkModeToggle" onclick="toggleDarkMode()"></div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-label">
+                    <span class="setting-name">Animations</span>
+                    <div class="toggle-switch on" id="animToggle" onclick="toggleAnimations()"></div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-label">
+                    <span class="setting-name">Fluid Background</span>
+                    <div class="toggle-switch on" id="fluidToggle" onclick="toggleFluid()"></div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-label">
+                    <span class="setting-name">Auto-play Videos</span>
+                    <div class="toggle-switch" id="autoplayToggle" onclick="toggleAutoplay()"></div>
+                </div>
+            </div>
+
+            <div class="setting-group" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                <div class="setting-name" style="font-size: 12px; color: var(--text-secondary);">Version 1.0 | © 2024 stark.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game Data - Complete List
+        const gameData = [
+            { name: "1v1 LOL", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/1v1.lol.html" },
+            { name: "2048", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/2048.html" },
+            { name: "Agar IO", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/agar-io-lite.html" },
+            { name: "Age of War", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/age-of-war.html" },
+            { name: "Angry Birds", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/angry-birds.html" },
+            { name: "Awesome Tanks", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/awesome-tanks.html" },
+            { name: "Bad Ice Cream", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/bad-ice-cream.html" },
+            { name: "Basketball Legends", category: "sports", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/basketball-legends.html" },
+            { name: "BitLife", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/bitlife.html" },
+            { name: "Bloons TD", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/bloons-TD.html" },
+            { name: "Bloons TD 2", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/bloons-TD-2.html" },
+            { name: "Bloons TD 3", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/bloons-TD-3.html" },
+            { name: "Bloons TD 4", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/bloons-TD-4.html" },
+            { name: "Bloons TD 5", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/bloons-TD-5.html" },
+            { name: "Bloxorz", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/bloxorz.html" },
+            { name: "Bob the Robber", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/bob-the-robber.html" },
+            { name: "Bubble Shooter", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/bubble-shooter.html" },
+            { name: "Candy Crush", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/candy-crush.html" },
+            { name: "Chess", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/chess.html" },
+            { name: "Cookie Clicker", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/cookie-clicker.htm" },
+            { name: "Crossy Road", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/crossy-road.htm" },
+            { name: "Cut the Rope", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/cut-the-rope.html" },
+            { name: "Drift Boss", category: "sports", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/drift-boss.htm" },
+            { name: "Duck Life", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/duck-life.html" },
+            { name: "Duck Life 2", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/duck-life-2.html" },
+            { name: "Duck Life 3", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/duck-life-3.html" },
+            { name: "Duck Life 4", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/duck-life-4.html" },
+            { name: "Duck Life 5", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/duck-life-5.html" },
+            { name: "Eggy Car", category: "sports", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/eggy-car.html" },
+            { name: "Fireboy & Watergirl", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/fireboy-and-watergirl.html" },
+            { name: "Fireboy & Watergirl 2", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/fireboy-and-watergirl-2.html" },
+            { name: "Fireboy & Watergirl 3", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/fireboy-and-watergirl-3.html" },
+            { name: "Flappy Bird", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/flappy-bird.html" },
+            { name: "FNAF", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/fnaf.html" },
+            { name: "FNAF 2", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/fnaf-2.html" },
+            { name: "FNAF 3", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/fnaf-3.html" },
+            { name: "FNAF 4", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/fnaf-4.html" },
+            { name: "Football Legends", category: "sports", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/football-legends.html" },
+            { name: "Fruit Ninja", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/fruit-ninja.html" },
+            { name: "Geometry Dash", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/geometry-dash.html" },
+            { name: "Geometry Dash Lite", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/geometry-dash-lite.html" },
+            { name: "Google Dino", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/google-dino.html" },
+            { name: "Granny", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/granny.html" },
+            { name: "Granny 2", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/granny-2.html" },
+            { name: "Happy Wheels", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/happy-wheels.html" },
+            { name: "Helix Jump", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/helix-jump.html" },
+            { name: "Hill Climb Racing", category: "sports", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/hill-climb-racing-lite.html" },
+            { name: "Hole IO", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/hole-io.html" },
+            { name: "Idle Breakout", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/idle-breakout.html" },
+            { name: "Jetpack Joyride", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/jetpack-joyride.html" },
+            { name: "Madalin Stunt Cars", category: "sports", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/madalin-stunt-cars-2.html" },
+            { name: "Melon Playground", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/melon-playground.html" },
+            { name: "Minesweeper", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/minesweeper.html" },
+            { name: "Moto X3M", category: "sports", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/moto-x3m.htm" },
+            { name: "Moto X3M 2", category: "sports", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/moto-x3m-2.html" },
+            { name: "Moto X3M 3", category: "sports", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/moto-x3m-3.html" },
+            { name: "OvO", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/ovo.html" },
+            { name: "OvO 2", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/ovo-2.html" },
+            { name: "Pac Man", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/pac-man.html" },
+            { name: "Papa's Bakeria", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/papas-bakeria.html" },
+            { name: "Papa's Burgeria", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/papas-burgeria.html" },
+            { name: "Papa's Cheeseria", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/papas-cheeseria.html" },
+            { name: "Papa's Cupcakeria", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/papas-cupcakeria.html" },
+            { name: "Papa's Donuteria", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/papas-donuteria.html" },
+            { name: "Papa's Freezeria", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/papas-freezeria.html" },
+            { name: "Papa's Hot Doggeria", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/papas-hot-doggeria.html" },
+            { name: "Papa's Pancakeria", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/papas-pancakeria.html" },
+            { name: "Papa's Pizzeria", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/papas-pizzeria.html" },
+            { name: "Papa's Scooperia", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/papas-scooperia.html" },
+            { name: "Papa's Sushiria", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/papas-sushiria.html" },
+            { name: "Papa's Taco Mia", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/papas-taco-mia.html" },
+            { name: "Papa's Wingeria", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/papas-wingeria.html" },
+            { name: "Parking Fury", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/parking-fury.html" },
+            { name: "Parking Fury 2", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/parking-fury-2.html" },
+            { name: "Parking Fury 3", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/parking-fury-3.html" },
+            { name: "Plants vs Zombies", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/plants-vs-zombies.html" },
+            { name: "Retro Bowl", category: "sports", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/retro-bowl.html" },
+            { name: "Run", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/run.html" },
+            { name: "Run 2", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/run-2.html" },
+            { name: "Run 3", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/run-3.html" },
+            { name: "Slope", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/slope.html" },
+            { name: "Slope 3", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/slope-3.html" },
+            { name: "Snow Rider", category: "sports", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/snow-rider.htm" },
+            { name: "Soccer Bros", category: "sports", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/soccer-bros.html" },
+            { name: "Sprunki", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/sprunki.html" },
+            { name: "Stack", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/stack.html" },
+            { name: "Stick Fighter", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/stick-fighter.html" },
+            { name: "Subway Surfers", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/subway-surfers-san-francisco.html" },
+            { name: "Super Mario 63", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/sm-63.html" },
+            { name: "Super Mario 64", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/sm-64.html" },
+            { name: "Temple Run 2", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/temple-run-2.htm" },
+            { name: "The Impossible Quiz", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/the-impossible-quiz.html" },
+            { name: "Tiny Fishing", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/tiny-fishing.html" },
+            { name: "Tunnel Rush", category: "action", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/tunnel-rush.html" },
+            { name: "Vex", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/vex-4.html" },
+            { name: "Vex 2", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/vex-5.html" },
+            { name: "Vex 3", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/vex-6.htm" },
+            { name: "Wheely", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/wheely.html" },
+            { name: "Wheely 2", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/wheely-2.html" },
+            { name: "Wheely 3", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/wheely-3.html" },
+            { name: "Wheely 4", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/wheely-4.html" },
+            { name: "Wheely 5", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/wheely-5.html" },
+            { name: "Wheely 6", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/wheely-6.html" },
+            { name: "Wheely 7", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/wheely-7.html" },
+            { name: "Wheely 8", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/wheely-8.html" },
+            { name: "Worlds Hardest Game", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/worlds-hardest-game.html" },
+            { name: "Worlds Hardest Game 2", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/worlds-hardest-game-2.html" },
+            { name: "Worlds Hardest Game 3", category: "puzzle", url: "https://cdn.staticdelivr.com/gh/CoolDude2349/Offline-HTML-Games-Pack/refs/heads/master/offline/worlds-hardest-game-3.html" },
+        ];
+
+        let currentFilter = 'all';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            renderGames(gameData);
+            setupEventListeners();
+            initializeFluidBackground();
+        });
+
+        function renderGames(games) {
+            const grid = document.getElementById('gamesGrid');
+            grid.innerHTML = '';
+            
+            games.forEach(game => {
+                const card = document.createElement('div');
+                card.className = 'game-card';
+                card.innerHTML = `
+                    <div class="game-thumbnail">🎮</div>
+                    <div class="game-info">
+                        <div class="game-name">${game.name}</div>
+                        <div class="game-badge">${game.category}</div>
+                    </div>
+                `;
+                card.onclick = () => playGame(game.name, game.url);
+                grid.appendChild(card);
+            });
+        }
+
+        function filterGames(category) {
+            currentFilter = category;
+            document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (category === 'all') {
+                renderGames(gameData);
+            } else {
+                const filtered = gameData.filter(g => g.category === category);
+                renderGames(filtered);
+            }
+        }
+
+        function playGame(name, url) {
+            window.location.href = url;
+        }
+
+        function setupEventListeners() {
+            // Sidebar toggle
+            document.getElementById('toggleSidebar').addEventListener('click', function() {
+                document.querySelector('.sidebar').classList.toggle('collapsed');
+            });
+
+            // Navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const view = this.dataset.view;
+                    switchView(view);
+                    
+                    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // Settings
+            document.getElementById('openSettings').addEventListener('click', openSettings);
+
+            // Search
+            document.getElementById('searchBox').addEventListener('input', function(e) {
+                const query = e.target.value.toLowerCase();
+                const filtered = gameData.filter(g => g.name.toLowerCase().includes(query));
+                renderGames(filtered);
+            });
+        }
+
+        function switchView(viewName) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(`view-${viewName}`).classList.add('active');
+        }
+
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('active');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+
+        function toggleDarkMode() {
+            document.getElementById('darkModeToggle').classList.toggle('on');
+        }
+
+        function toggleAnimations() {
+            document.getElementById('animToggle').classList.toggle('on');
+        }
+
+        function toggleFluid() {
+            document.getElementById('fluidToggle').classList.toggle('on');
+            document.getElementById('fluidCanvas').style.opacity = 
+                document.getElementById('fluidToggle').classList.contains('on') ? '1' : '0';
+        }
+
+        function toggleAutoplay() {
+            document.getElementById('autoplayToggle').classList.toggle('on');
+        }
+
+        // Fluid Background Animation
+        function initializeFluidBackground() {
+            const canvas = document.getElementById('fluidCanvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const particleCount = 60;
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.size = Math.random() * 300 + 100;
+                    this.speedX = (Math.random() - 0.5) * 0.5;
+                    this.speedY = (Math.random() - 0.5) * 0.5;
+                    this.opacity = Math.random() * 0.3 + 0.1;
+                }
+
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+
+                    if (this.x - this.size / 2 > canvas.width) this.x = -this.size / 2;
+                    if (this.x + this.size / 2 < 0) this.x = canvas.width + this.size / 2;
+                    if (this.y - this.size / 2 > canvas.height) this.y = -this.size / 2;
+                    if (this.y + this.size / 2 < 0) this.y = canvas.height + this.size / 2;
+                }
+
+                draw(ctx) {
+                    ctx.fillStyle = `rgba(100, 110, 140, ${this.opacity})`;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.filter = 'blur(80px)';
+                }
+            }
+
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'rgba(10, 14, 39, 1)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                particles.forEach(particle => {
+                    particle.update();
+                    particle.draw(ctx);
+                });
+
+                requestAnimationFrame(animate);
+            }
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            });
+        }
+
+        // Close modal on background click
+        document.getElementById('settingsModal').addEventListener('click', function(e) {
+            if (e.target === this) closeSettings();
+        });
+    </script>
+</body>
+</html>
